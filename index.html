@@ -160,83 +160,77 @@ ARTEMIS DARKNET NETWORK // GLOBAL NODE ACCESS
 
 </div>
 
+<!-- FIREBASE -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
 <script>
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAVZZ_Nogu2giA73PfaEKl5e6t6F8Tj9tI",
+  authDomain: "artemis-chat-3cf80.firebaseapp.com",
+  projectId: "artemis-chat-3cf80",
+  storageBucket: "artemis-chat-3cf80.firebasestorage.app",
+  messagingSenderId: "611371734351",
+  appId: "1:611371734351:web:c3e4f6b0d5ec0ced3ee13a"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
 
 /* FAKE DARKNET NODES */
 function createNodes() {
     let map = document.getElementById("map");
-
     for(let i=0;i<25;i++) {
         let node = document.createElement("div");
         node.className = "node";
-
         node.style.top = Math.random()*100 + "%";
         node.style.left = Math.random()*100 + "%";
-
         map.appendChild(node);
     }
 }
 createNodes();
 
-/* STORE */
-let db = JSON.parse(localStorage.getItem("artemis_v5") || "[]");
-
+/* SEND MESSAGE */
 function send() {
     let agent = document.getElementById("agent").value;
     let msg = document.getElementById("msg").value;
 
     if(!agent || !msg) return;
 
-    db.unshift({
-        agent,
-        msg,
-        time: new Date().toLocaleTimeString()
+    db.collection("messages").add({
+        agent: agent,
+        msg: msg,
+        time: firebase.firestore.FieldValue.serverTimestamp()
     });
 
-    localStorage.setItem("artemis_v5", JSON.stringify(db));
-
     document.getElementById("msg").value = "";
-
-    load();
 }
 
-/* LOAD */
-function load() {
+/* LOAD REALTIME */
+db.collection("messages")
+  .orderBy("time")
+  .limit(50)
+  .onSnapshot(snapshot => {
+
     let wall = document.getElementById("wall");
     wall.innerHTML = "";
 
-    db.forEach(m => {
+    snapshot.forEach(doc => {
+        let m = doc.data();
         let div = document.createElement("div");
         div.className = "msg";
 
         div.innerHTML = `
             <b>👤 ${m.agent}</b><br>
             ${m.msg}<br>
-            <small>⏱ ${m.time}</small>
+            <small>🌐 Live Transmission</small>
         `;
 
         wall.appendChild(div);
     });
-}
 
-load();
-
-/* LIVE FEED SIMULATION */
-setInterval(() => {
-    let fakeAgents = ["Ghost_01","Shadow_X","Nyx","ZeroTrace","KaliNode"];
-
-    db.unshift({
-        agent: fakeAgents[Math.floor(Math.random()*fakeAgents.length)],
-        msg: "🔴 Signal detected in darknet grid...",
-        time: new Date().toLocaleTimeString()
-    });
-
-    if(db.length > 15) db.pop();
-
-    localStorage.setItem("artemis_v5", JSON.stringify(db));
-    load();
-
-}, 5000);
+});
 
 </script>
 
