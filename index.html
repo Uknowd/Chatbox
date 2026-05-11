@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>ARTEMIS DARKNET NODE</title>
+
+<style>
+body {
+    margin: 0;
+    background: radial-gradient(circle, #020202, #000);
+    color: #00ffcc;
+    font-family: monospace;
+    overflow: hidden;
+}
+
+/* TOP BAR */
+header {
+    text-align: center;
+    padding: 10px;
+    border-bottom: 1px solid #00ffcc;
+    letter-spacing: 3px;
+}
+
+/* GRID */
+.container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    height: 90vh;
+}
+
+/* LEFT PANEL */
+.left {
+    border-right: 1px solid #00ffcc;
+    padding: 10px;
+}
+
+/* RIGHT PANEL */
+.right {
+    padding: 10px;
+}
+
+/* INPUTS */
+input, textarea {
+    width: 100%;
+    margin-top: 10px;
+    padding: 8px;
+    background: black;
+    border: 1px solid #00ffcc;
+    color: #00ffcc;
+    font-family: monospace;
+}
+
+button {
+    width: 100%;
+    margin-top: 10px;
+    padding: 10px;
+    background: #00ffcc;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+/* WALL */
+.msg {
+    border-left: 3px solid #00ffcc;
+    padding: 8px;
+    margin-top: 10px;
+    background: rgba(0,255,204,0.05);
+    animation: flicker 2s infinite;
+}
+
+@keyframes flicker {
+    0%,100% {opacity: 1;}
+    50% {opacity: 0.6;}
+}
+
+/* GLOBAL MAP */
+#map {
+    height: 300px;
+    border: 1px solid #00ffcc;
+    margin-top: 10px;
+    position: relative;
+    overflow: hidden;
+}
+
+/* FAKE NODES */
+.node {
+    width: 6px;
+    height: 6px;
+    background: #00ffcc;
+    border-radius: 50%;
+    position: absolute;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {transform: scale(1);}
+    50% {transform: scale(2);}
+    100% {transform: scale(1);}
+}
+
+/* GLITCH TEXT */
+.glitch {
+    animation: glitch 1s infinite;
+}
+
+@keyframes glitch {
+    0% {transform: translate(0);}
+    20% {transform: translate(-1px,1px);}
+    40% {transform: translate(1px,-1px);}
+    60% {transform: translate(-1px,0);}
+    80% {transform: translate(1px,1px);}
+    100% {transform: translate(0);}
+}
+
+small {
+    opacity: 0.6;
+}
+</style>
+</head>
+
+<body>
+
+<header class="glitch">
+ARTEMIS DARKNET NETWORK // GLOBAL NODE ACCESS
+</header>
+
+<div class="container">
+
+<!-- LEFT -->
+<div class="left">
+
+<h3>📡 NODE TRANSMISSION</h3>
+
+<input id="agent" placeholder="Agent ID (ex: Ghost_07)">
+<textarea id="msg" placeholder="Encrypted message..."></textarea>
+
+<button onclick="send()">TRANSMIT INTO DARKNET</button>
+
+<div id="wall"></div>
+
+</div>
+
+<!-- RIGHT -->
+<div class="right">
+
+<h3>🌐 GLOBAL NETWORK MAP</h3>
+
+<div id="map"></div>
+
+<small>Simulation active - nodes unstable</small>
+
+<h3>🎯 ACTIVE MISSIONS</h3>
+
+<div class="msg">🔓 Extract data from node #AX-77</div>
+<div class="msg">🛰️ Intercept signal in zone: North Grid</div>
+<div class="msg">⚠ Avoid detection from TRACE AI</div>
+
+</div>
+
+</div>
+
+<script>
+
+/* FAKE DARKNET NODES */
+function createNodes() {
+    let map = document.getElementById("map");
+
+    for(let i=0;i<25;i++) {
+        let node = document.createElement("div");
+        node.className = "node";
+
+        node.style.top = Math.random()*100 + "%";
+        node.style.left = Math.random()*100 + "%";
+
+        map.appendChild(node);
+    }
+}
+createNodes();
+
+/* STORE */
+let db = JSON.parse(localStorage.getItem("artemis_v5") || "[]");
+
+function send() {
+    let agent = document.getElementById("agent").value;
+    let msg = document.getElementById("msg").value;
+
+    if(!agent || !msg) return;
+
+    db.unshift({
+        agent,
+        msg,
+        time: new Date().toLocaleTimeString()
+    });
+
+    localStorage.setItem("artemis_v5", JSON.stringify(db));
+
+    document.getElementById("msg").value = "";
+
+    load();
+}
+
+/* LOAD */
+function load() {
+    let wall = document.getElementById("wall");
+    wall.innerHTML = "";
+
+    db.forEach(m => {
+        let div = document.createElement("div");
+        div.className = "msg";
+
+        div.innerHTML = `
+            <b>👤 ${m.agent}</b><br>
+            ${m.msg}<br>
+            <small>⏱ ${m.time}</small>
+        `;
+
+        wall.appendChild(div);
+    });
+}
+
+load();
+
+/* LIVE FEED SIMULATION */
+setInterval(() => {
+    let fakeAgents = ["Ghost_01","Shadow_X","Nyx","ZeroTrace","KaliNode"];
+
+    db.unshift({
+        agent: fakeAgents[Math.floor(Math.random()*fakeAgents.length)],
+        msg: "🔴 Signal detected in darknet grid...",
+        time: new Date().toLocaleTimeString()
+    });
+
+    if(db.length > 15) db.pop();
+
+    localStorage.setItem("artemis_v5", JSON.stringify(db));
+    load();
+
+}, 5000);
+
+</script>
+
+</body>
+</html>
