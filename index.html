@@ -2,92 +2,111 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>ARTEMIS V7</title>
+<title>Artemis ChatBox</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- PWA -->
-<link rel="manifest" href="manifest.json">
-
 <style>
-body{
-margin:0;
-font-family: monospace;
-background:#000;
-color:#00ffcc;
+body {
+    margin: 0;
+    background: #000;
+    color: #00ffcc;
+    font-family: monospace;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
 }
 
-nav{
-display:flex;
-justify-content:space-around;
-padding:10px;
-border-bottom:1px solid #00ffcc;
+/* HEADER */
+header {
+    padding: 12px;
+    text-align: center;
+    border-bottom: 1px solid #00ffcc;
+    letter-spacing: 2px;
 }
 
-.page{display:none;padding:10px;}
-.active{display:block;}
-
-.post{
-border:1px solid #00ffcc33;
-padding:10px;
-margin:10px 0;
-border-radius:10px;
+/* LOGIN BOX */
+#login {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
-input,textarea{
-width:100%;
-padding:10px;
-margin:5px 0;
-background:#000;
-color:#00ffcc;
-border:1px solid #00ffcc;
+input {
+    padding: 10px;
+    background: black;
+    border: 1px solid #00ffcc;
+    color: #00ffcc;
+    outline: none;
 }
 
-button{
-background:#00ffcc;
-border:none;
-padding:10px;
-cursor:pointer;
+button {
+    padding: 10px;
+    background: #00ffcc;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+/* CHAT */
+#app {
+    display: none;
+    flex: 1;
+    flex-direction: column;
+}
+
+#chat {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+}
+
+.msg {
+    background: rgba(0,255,204,0.06);
+    border-left: 3px solid #00ffcc;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 6px;
+}
+
+/* INPUT BAR */
+.input-bar {
+    display: flex;
+    gap: 5px;
+    padding: 10px;
+    border-top: 1px solid #00ffcc;
+}
+
+.input-bar input {
+    flex: 1;
+}
+
+/* HIDE */
+.hidden {
+    display: none;
 }
 </style>
 </head>
 
 <body>
 
-<!-- LOGIN -->
+<header>ARTEMIS CHATBOX</header>
+
+<!-- INSCRIPTION SIMPLE -->
 <div id="login">
-<h3>Login Artemis V7</h3>
-<input id="u" placeholder="Pseudo">
-<input id="p" type="password" placeholder="Mot de passe">
-<button onclick="login()">Entrer</button>
+    <h3>👤 Choisis ton pseudo</h3>
+    <input id="name" placeholder="Ex: Ghost_07">
+    <button onclick="join()">Entrer dans le chat</button>
 </div>
 
 <!-- APP -->
-<div id="app" style="display:none">
+<div id="app">
 
-<nav>
-<button onclick="show('feed')">Feed</button>
-<button onclick="show('create')">Post</button>
-<button onclick="show('chat')">Chat</button>
-<button onclick="show('profile')">Profil</button>
-</nav>
+<div id="chat"></div>
 
-<div id="feed" class="page active"></div>
-
-<div id="create" class="page">
-<textarea id="postText"></textarea>
-<button onclick="createPost()">Publier</button>
-</div>
-
-<div id="chat" class="page">
-<div id="chatBox"></div>
-<input id="msg">
-<button onclick="sendMsg()">Send</button>
-</div>
-
-<div id="profile" class="page">
-<textarea id="bio"></textarea>
-<input id="photo" placeholder="Photo URL">
-<button onclick="saveProfile()">Save</button>
+<div class="input-bar">
+    <input id="msg" placeholder="Message...">
+    <button onclick="send()">➤</button>
 </div>
 
 </div>
@@ -97,141 +116,86 @@ cursor:pointer;
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
 <script>
+
 const firebaseConfig = {
-apiKey:"YOUR_KEY",
-authDomain:"YOUR_DOMAIN",
-projectId:"YOUR_ID"
+  apiKey: "AIzaSyAVZZ_Nogu2giA73PfaEKl5e6t6F8Tj9tI",
+  authDomain: "artemis-chat-3cf80.firebaseapp.com",
+  projectId: "artemis-chat-3cf80",
 };
 
 firebase.initializeApp(firebaseConfig);
-const db=firebase.firestore();
+const db = firebase.firestore();
 
-let user="";
+let username = "";
 
-/* HASH SIMPLE */
-function hash(s){
-let h=0;
-for(let i=0;i<s.length;i++){
-h=(h<<5)-h+s.charCodeAt(i);
-h|=0;
-}
-return h;
-}
+/* 🔐 JOIN CHAT */
+function join() {
+    let name = document.getElementById("name").value;
 
-/* LOGIN */
-async function login(){
-let u=document.getElementById("u").value;
-let p=document.getElementById("p").value;
+    if (!name) return;
 
-let ref=db.collection("users").doc(u);
-let snap=await ref.get();
+    username = name;
 
-if(snap.exists){
-if(snap.data().password!=hash(p)){
-alert("wrong password");
-return;
-}
-}else{
-await ref.set({
-password:hash(p),
-bio:"",
-photoURL:"",
-followers:[],
-following:[],
-online:true
-});
+    document.getElementById("login").style.display = "none";
+    document.getElementById("app").style.display = "flex";
+
+    listen();
 }
 
-user=u;
+/* 💬 SEND */
+function send() {
+    let msg = document.getElementById("msg").value;
 
-document.getElementById("login").style.display="none";
-document.getElementById("app").style.display="block";
+    if (!msg) return;
 
-loadFeed();
-loadChat();
+    db.collection("messages").add({
+        name: username,
+        msg,
+        time: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    document.getElementById("msg").value = "";
 }
 
-/* NAV */
-function show(p){
-document.querySelectorAll(".page").forEach(e=>e.classList.remove("active"));
-document.getElementById(p).classList.add("active");
+/* 📡 REALTIME */
+function listen() {
+    db.collection("messages")
+    .orderBy("time")
+    .limit(100)
+    .onSnapshot(snapshot => {
+
+        let chat = document.getElementById("chat");
+        chat.innerHTML = "";
+
+        snapshot.forEach(doc => {
+            let m = doc.data();
+
+            chat.innerHTML += `
+            <div class="msg">
+                👤 ${m.name}<br>
+                ${m.msg}
+            </div>`;
+        });
+
+        chat.scrollTop = chat.scrollHeight;
+
+        /* 🔔 notification */
+        let last = snapshot.docs[snapshot.docs.length - 1];
+        if (last) {
+            let data = last.data();
+
+            if (Notification.permission === "granted") {
+                new Notification(data.name, {
+                    body: data.msg
+                });
+            }
+        }
+    });
 }
 
-/* CREATE POST */
-async function createPost(){
-await db.collection("posts").add({
-author:user,
-text:document.getElementById("postText").value,
-likes:[],
-time:Date.now()
-});
-
-document.getElementById("postText").value="";
-}
-
-/* FEED */
-function loadFeed(){
-db.collection("posts").onSnapshot(snap=>{
-let feed=document.getElementById("feed");
-feed.innerHTML="";
-
-snap.forEach(doc=>{
-let p=doc.data();
-
-feed.innerHTML+=`
-<div class="post">
-<b>${p.author}</b><br>
-${p.text}<br><br>
-❤️ ${p.likes.length}
-<button onclick="likePost('${doc.id}')">Like</button>
-</div>`;
-});
-});
-}
-
-/* LIKE */
-async function likePost(id){
-let ref=db.collection("posts").doc(id);
-let snap=await ref.get();
-
-let likes=snap.data().likes;
-
-if(!likes.includes(user)){
-likes.push(user);
-}
-
-await ref.update({likes});
-}
-
-/* CHAT */
-function sendMsg(){
-db.collection("messages").add({
-from:user,
-msg:document.getElementById("msg").value,
-time:Date.now()
-});
-
-document.getElementById("msg").value="";
-}
-
-function loadChat(){
-db.collection("messages").onSnapshot(snap=>{
-let box=document.getElementById("chatBox");
-box.innerHTML="";
-
-snap.forEach(doc=>{
-let m=doc.data();
-box.innerHTML+=`<div>${m.from}: ${m.msg}</div>`;
-});
-});
-}
-
-/* PROFILE */
-async function saveProfile(){
-await db.collection("users").doc(user).update({
-bio:document.getElementById("bio").value,
-photoURL:document.getElementById("photo").value
-});
+/* 🔔 permission notif */
+if ("Notification" in window) {
+    Notification.requestPermission();
 }
 
 </script>
