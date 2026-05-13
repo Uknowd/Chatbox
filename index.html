@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Artemis ChatBox</title>
+<title>Artemis Anonymous ChatBox</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
@@ -117,78 +117,38 @@ button {
 
 <script>
 
+const firebaseConfig = {
+  apiKey: "AIzaSyAVZZ_Nogu2giA73PfaEKl5e6t6F8Tj9tI",
+  authDomain: "artemis-chat-3cf80.firebaseapp.com",
+  projectId: "artemis-chat-3cf80",
+};
+
 firebase.initializeApp(firebaseConfig);
-
 const db = firebase.firestore();
-const auth = firebase.auth();
 
-let uid = null;
-let username = null;
+let username = "";
 
-/* 🔐 IMPORTANT : persistance obligatoire */
-auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
-.then(() => {
-    return auth.signInAnonymously();
-})
-.catch(console.error);
-
-/* 🔄 FIREBASE STATE */
-auth.onAuthStateChanged(async (user) => {
-    if (!user) return;
-
-    uid = user.uid;
-
-    const ref = db.collection("users").doc(uid);
-    const doc = await ref.get();
-
-    if (doc.exists && doc.data().name) {
-        username = doc.data().name;
-        enterApp();
-    } else {
-        showLogin();
-    }
-});
-
-/* 👁️ SHOW LOGIN */
-function showLogin() {
-    document.getElementById("login").style.display = "flex";
-    document.getElementById("app").style.display = "none";
-}
-
-/* 🚪 JOIN */
-async function join() {
-    const name = document.getElementById("name").value.trim();
+/* 🔐 JOIN CHAT */
+function join() {
+    let name = document.getElementById("name").value;
 
     if (!name) return;
-    if (!uid) {
-        alert("Utilisateur pas encore prêt, réessaie");
-        return;
-    }
 
     username = name;
 
-    await db.collection("users").doc(uid).set({
-        name: username,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
-
-    enterApp();
-}
-
-/* 📲 ENTER APP */
-function enterApp() {
     document.getElementById("login").style.display = "none";
     document.getElementById("app").style.display = "flex";
+
     listen();
 }
 
 /* 💬 SEND */
 function send() {
-    const msg = document.getElementById("msg").value.trim();
-    if (!msg || !uid) return;
+    let msg = document.getElementById("msg").value;
+
+    if (!msg) return;
 
     db.collection("messages").add({
-        uid,
         name: username,
         msg,
         time: firebase.firestore.FieldValue.serverTimestamp()
@@ -197,28 +157,45 @@ function send() {
     document.getElementById("msg").value = "";
 }
 
-/* 📡 CHAT */
+/* 📡 REALTIME */
 function listen() {
     db.collection("messages")
-        .orderBy("time")
-        .limit(100)
-        .onSnapshot(snapshot => {
+    .orderBy("time")
+    .limit(100)
+    .onSnapshot(snapshot => {
 
-            const chat = document.getElementById("chat");
-            chat.innerHTML = "";
+        let chat = document.getElementById("chat");
+        chat.innerHTML = "";
 
-            snapshot.forEach(doc => {
-                const m = doc.data();
+        snapshot.forEach(doc => {
+            let m = doc.data();
 
-                chat.innerHTML += `
-                    <div class="msg">
-                        👤 ${m.name}<br>
-                        ${m.msg}
-                    </div>`;
-            });
-
-            chat.scrollTop = chat.scrollHeight;
+            chat.innerHTML += `
+            <div class="msg">
+                👤 ${m.name}<br>
+                ${m.msg}
+            </div>`;
         });
+
+        chat.scrollTop = chat.scrollHeight;
+
+        /* 🔔 notification */
+        let last = snapshot.docs[snapshot.docs.length - 1];
+        if (last) {
+            let data = last.data();
+
+            if (Notification.permission === "granted") {
+                new Notification(data.name, {
+                    body: data.msg
+                });
+            }
+        }
+    });
+}
+
+/* 🔔 permission notif */
+if ("Notification" in window) {
+    Notification.requestPermission();
 }
 
 </script>
