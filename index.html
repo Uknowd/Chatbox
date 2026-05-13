@@ -122,44 +122,52 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
 
-let username = "";
-let uid = "";
+let uid = null;
+let username = null;
 
-/* 🔐 FORCER PERSISTANCE SESSION */
+/* 🔐 IMPORTANT : persistance obligatoire */
 auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
 .then(() => {
     return auth.signInAnonymously();
 })
 .catch(console.error);
 
-/* 🔄 USER STATE */
+/* 🔄 FIREBASE STATE */
 auth.onAuthStateChanged(async (user) => {
     if (!user) return;
 
     uid = user.uid;
 
-    const userRef = db.collection("users").doc(uid);
-    const doc = await userRef.get();
+    const ref = db.collection("users").doc(uid);
+    const doc = await ref.get();
 
-    if (doc.exists) {
+    if (doc.exists && doc.data().name) {
         username = doc.data().name;
         enterApp();
     } else {
-        // pas encore de pseudo → afficher login
-        document.getElementById("login").style.display = "flex";
-        document.getElementById("app").style.display = "none";
+        showLogin();
     }
 });
 
-/* 🚪 JOIN (SAFE) */
-function join() {
-    const name = document.getElementById("name").value;
+/* 👁️ SHOW LOGIN */
+function showLogin() {
+    document.getElementById("login").style.display = "flex";
+    document.getElementById("app").style.display = "none";
+}
 
-    if (!name || !uid) return;
+/* 🚪 JOIN */
+async function join() {
+    const name = document.getElementById("name").value.trim();
+
+    if (!name) return;
+    if (!uid) {
+        alert("Utilisateur pas encore prêt, réessaie");
+        return;
+    }
 
     username = name;
 
-    db.collection("users").doc(uid).set({
+    await db.collection("users").doc(uid).set({
         name: username,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
@@ -167,7 +175,7 @@ function join() {
     enterApp();
 }
 
-/* 📲 ENTER */
+/* 📲 ENTER APP */
 function enterApp() {
     document.getElementById("login").style.display = "none";
     document.getElementById("app").style.display = "flex";
@@ -176,7 +184,7 @@ function enterApp() {
 
 /* 💬 SEND */
 function send() {
-    const msg = document.getElementById("msg").value;
+    const msg = document.getElementById("msg").value.trim();
     if (!msg || !uid) return;
 
     db.collection("messages").add({
@@ -203,10 +211,10 @@ function listen() {
                 const m = doc.data();
 
                 chat.innerHTML += `
-                <div class="msg">
-                    👤 ${m.name}<br>
-                    ${m.msg}
-                </div>`;
+                    <div class="msg">
+                        👤 ${m.name}<br>
+                        ${m.msg}
+                    </div>`;
             });
 
             chat.scrollTop = chat.scrollHeight;
